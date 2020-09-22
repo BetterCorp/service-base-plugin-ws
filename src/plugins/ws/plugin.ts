@@ -77,7 +77,7 @@ module.exports.init = (features: PluginFeature) => {
       WebSocket.send(JSON.stringify({
         action: objectOfInfo.action,
         data: objectOfInfo.data,
-        auth: (features.config.identity || {}).token || '',
+        auth: features.config.plugins.ws.token || '',
       }));
     } catch (exc) {
       features.log.error(exc);
