@@ -5,16 +5,16 @@ import { Tools as TOOLS } from '@bettercorp/tools/lib/Tools';
 
 let WebSocket: WEBSOCKETS;
 let reconnect = (features: PluginFeature) => {
-  console.log(`[WS] Connect to[${features.config.plugins.ws.endpoint}]`);
+  features.log.info(`[WS] Connect to[${features.config.plugins.ws.endpoint}]`);
   WebSocket = new WEBSOCKETS(features.config.plugins.ws.endpoint, {
     perMessageDeflate: false
   });
   WebSocket.on('error', function () {
-    console.log('[WS] Errored out');
+    features.log.info('[WS] Errored out');
     features.emitEvent(`ws-status`, false);
   });
   WebSocket.on('close', function () {
-    console.log('[WS] Disconnected');
+    features.log.info('[WS] Disconnected');
     features.emitEvent(`ws-status`, false);
     WebSocket.close();
     WebSocket.terminate();
@@ -23,7 +23,7 @@ let reconnect = (features: PluginFeature) => {
     }, 5000);
   });
   WebSocket.on('open', function open () {
-    console.log('[WS] Connected');
+    features.log.info('[WS] Connected');
     WebSocket.send(JSON.stringify({
       action: 'ws-auth',
       auth: features.config.plugins.ws.token || '',
@@ -39,9 +39,9 @@ let reconnect = (features: PluginFeature) => {
   WebSocket.on('message', function incoming (data: string) {
     let msg = JSON.parse(data);
     if (msg.action === 'log') {
-      return console.log(`[SERVER] ${msg.data}`);
+      return features.log.info(`[SERVER] ${msg.data}`);
     }
-    console.log(data);
+    features.log.info(data);
     if (TOOLS.isNullOrUndefined(msg.action)) return;
     if (TOOLS.isNullOrUndefined(msg.data)) return;
     features.emitEvent(`ws-${msg.action}`, msg.data);
@@ -71,7 +71,7 @@ module.exports.init = (features: PluginFeature) => {
     if (typeof objectOfInfo.action !== 'string') return;
 
     if (WebSocket === undefined || WebSocket === null) {
-      return console.warn('WS NOT CONNECTED YET');
+      return features.log.warn('WS NOT CONNECTED YET');
     }
     try {
       WebSocket.send(JSON.stringify({
@@ -80,7 +80,7 @@ module.exports.init = (features: PluginFeature) => {
         auth: (features.config.identity || {}).token || '',
       }));
     } catch (exc) {
-      console.error(exc);
+      features.log.error(exc);
     }
   }, true);
 };
