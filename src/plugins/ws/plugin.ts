@@ -1,7 +1,8 @@
 import * as WEBSOCKETS from 'ws';
 import * as os from 'os';
-import { PluginFeature } from '@bettercorp/service-base/lib/ILib';
+import { IEmitter, PluginFeature } from '@bettercorp/service-base/lib/ILib';
 import { Tools as TOOLS } from '@bettercorp/tools/lib/Tools';
+import { WSEvent } from './WSEvent';
 
 let WebSocket: WEBSOCKETS;
 let reconnect = (features: PluginFeature) => {
@@ -37,14 +38,14 @@ let reconnect = (features: PluginFeature) => {
   });
 
   WebSocket.on('message', function incoming (data: string) {
-    let msg = JSON.parse(data);
+    let msg: WSEvent = JSON.parse(data);
     if (msg.action === 'log') {
-      return features.log.info(`[SERVER] ${msg.data}`);
+      return features.log.info(`[SERVER-${msg.action}] ${msg.data}`);
     }
     features.log.info(data);
     if (TOOLS.isNullOrUndefined(msg.action)) return;
     if (TOOLS.isNullOrUndefined(msg.data)) return;
-    features.emitEvent(`ws-${msg.action}`, msg.data);
+    features.emitEvent('message', false, msg);
   });
 };
 module.exports.init = (features: PluginFeature) => {
@@ -63,24 +64,22 @@ module.exports.init = (features: PluginFeature) => {
 
   reconnect(features);
 
-  features.onEvent('ws-send', null, (...args: any[]) => {
-    if (args.length === 0) return;
-    let objectOfInfo: any = args[0];
-    if (TOOLS.isNullOrUndefined(objectOfInfo.action)) return;
-    if (TOOLS.isNullOrUndefined(objectOfInfo.data)) return;
-    if (typeof objectOfInfo.action !== 'string') return;
+  features.onEvent('send', false, (data: IEmitter<WSEvent>) => {
+    if (TOOLS.isNullOrUndefined(data.data)) return;
+    if (TOOLS.isNullOrUndefined(data.data.action)) return;
+    if (typeof data.data.action !== 'string') return;
 
     if (WebSocket === undefined || WebSocket === null) {
       return features.log.warn('WS NOT CONNECTED YET');
     }
     try {
       WebSocket.send(JSON.stringify({
-        action: objectOfInfo.action,
-        data: objectOfInfo.data,
+        action: data.data.action,
+        data: data.data.data,
         auth: features.config.plugins.ws.token || '',
       }));
     } catch (exc) {
       features.log.error(exc);
     }
-  }, true);
+  });
 };
