@@ -10,16 +10,16 @@ export class Plugin implements IPlugin {
 
   private reconnect () {
     const self = this;
-    self.Features.log.info(`[WS] Connect to[${self.Features.config.plugins.ws.endpoint}]`);
+    self.Features.log.info(`Connect to[${self.Features.config.plugins.ws.endpoint}]`);
     self.WebSocket = new WEBSOCKETS(self.Features.config.plugins.ws.endpoint, {
       perMessageDeflate: false
     });
     self.WebSocket.on('error', function () {
-      self.Features.log.info('[WS] Errored out');
+      self.Features.log.info('Errored out');
       self.Features.emitEvent(null, `status`, false);
     });
     self.WebSocket.on('close', function () {
-      self.Features.log.info('[WS] Disconnected');
+      self.Features.log.info('Disconnected');
       self.Features.emitEvent(null, `status`, false);
       self.WebSocket.close();
       self.WebSocket.terminate();
@@ -28,7 +28,7 @@ export class Plugin implements IPlugin {
       }, 5000);
     });
     self.WebSocket.on('open', function open () {
-      self.Features.log.info('[WS] Connected');
+      self.Features.log.info('Connected');
       self.WebSocket.send(JSON.stringify({
         action: 'ws-auth',
         auth: self.Features.config.plugins.ws.token || '',
@@ -90,6 +90,9 @@ export class Plugin implements IPlugin {
           features.log.error(exc);
         }
       });
+
+      features.log.info("Client started")
+      resolve();
     });
   }
 };
