@@ -8,7 +8,7 @@
     "dev": "nodemon -L --watch src/**/*.ts --watch plugins/**/*.ts --exec ts-node src/index.ts",
     "start": "node lib/index.js",
     "build": "tsc",
-    "deploy": "npm publish",
+    "deploy": "npm publish"
   },
   "files": [
     "lib/**/*",
