@@ -125,11 +125,14 @@ export class Plugin implements IPlugin {
               return;
             }
 
-            if (Tools.isNullOrUndefined(ws.token) || ws.token == false)
-              return ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'NOAuthenticated' }));
+            if (features.getPluginConfig().forceAuthenticate === true)
+              if (Tools.isNullOrUndefined(ws.token) || ws.token == false)
+                if (features.getPluginConfig().notifyClientOnNoAuth === true)
+                  return ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'NOAuthenticated' }));
+                else return;
 
             features.emitEvent(null, WSServerEvents.receive, {
-              token: ws.token,
+              token: ws.token || false,
               session: clientSession || new Date().getTime(),
               connectionId: ws.connectionId,
               action: message.action,
