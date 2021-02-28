@@ -63,7 +63,7 @@ export class Plugin implements IPlugin {
           let message!: WSServerData;
           try {
             message = JSON.parse(messageStr);
-            if (Object.keys(message) !== ['action', 'data'])
+            if (Object.keys(message) !== ['action', 'data', 'auth'])
               throw `Messaged received does not match type! :: ${messageStr}`;
 
             if (message.action === undefined || message.action === null)
