@@ -13,19 +13,6 @@ export class Plugin implements IPlugin {
     //this.Features = features;
     const self = this;
     return new Promise((resolve) => {
-      if (TOOLS.isNullOrUndefined(features.config.plugins)) {
-        throw `No plugins definition in config file!`;
-      }
-      if (TOOLS.isNullOrUndefined(features.config.plugins.ws)) {
-        throw `No ws plugin definition in config file!`;
-      }
-      if (TOOLS.isNullOrUndefined(features.config.plugins.ws.endpoint)) {
-        throw `No ws plugin endpoint definition in config file!`;
-      }
-      if (TOOLS.isNullOrUndefined(features.config.plugins.ws.token)) {
-        throw `No ws plugin token definition in config file!`;
-      }
-
       self.WebSocketServer = new WEBSOCKET.Server({
         port: features.getPluginConfig().port
       }) as any as IPWebSocketServer;
