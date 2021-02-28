@@ -50,7 +50,7 @@ export class Plugin implements IPlugin {
         features.emitEvent(null, WSServerEvents.onConnection, { ws, req });
         features.log.info(`Client Connected [${req.headers['x-forwarded-for'] || req.socket.remoteAddress}-${clientSession || '{no_session}'}]`);
         const forceDC = (reason: string) => {
-          features.emitEvent(null, WSServerEvents.forceDisconnect, { ws, req });
+          features.emitEvent(null, WSServerEvents.onForcedDisconnect, { ws, req });
           features.log.info(`Client force disconnected [${req.headers['x-forwarded-for'] || req.socket.remoteAddress}-${clientSession || '{no_session}'}] - ${reason}`);
           ws.terminate();
         };
@@ -63,8 +63,16 @@ export class Plugin implements IPlugin {
           let message!: WSServerData;
           try {
             message = JSON.parse(messageStr);
-            if (Object.keys(message) !== ['action', 'data', 'auth'])
-              throw `Messaged received does not match type! :: ${messageStr}`;
+            const lockedFields = ['action', 'data', 'auth'];
+            const msgFields = Object.keys(message);
+            const isValidFields = () => {
+              for (const field of msgFields)
+                if (lockedFields.indexOf(field) < 0) return false;
+              return true;
+            };
+
+            if (!isValidFields())
+              throw `Messaged received does not match type! :(${lockedFields})!=(${msgFields}): ${messageStr}`;
 
             if (message.action === undefined || message.action === null)
               return forceDC('They`re sending me weird messages (no action)');

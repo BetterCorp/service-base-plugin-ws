@@ -6,6 +6,7 @@ export enum WSServerEvents {
   onConnectionClose = 'on-connection-close',
   onConnectionAuthChanged = 'on-connection-auth',
   forceDisconnect = 'force-disconnect',
+  onForcedDisconnect = 'forced-disconnect',
   auth = 'auth',
   receive = 'receive',
   send = 'send',
