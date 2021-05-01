@@ -7,9 +7,11 @@ export enum WSServerEvents {
   onConnectionAuthChanged = 'on-connection-auth',
   forceDisconnect = 'force-disconnect',
   onForcedDisconnect = 'forced-disconnect',
+  onConnectionCheckin = 'on-connection-checked-in',
   auth = 'auth',
   receive = 'receive',
   send = 'send',
+  getConnectedSessions = 'get-connected-sessions'
 }
 
 export interface IToken {

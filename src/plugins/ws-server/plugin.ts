@@ -9,7 +9,7 @@ export class Plugin implements IPlugin {
   private WebSocketServer!: IPWebSocketServer;
   //private Features!: PluginFeature;
 
-  init (features: PluginFeature): Promise<void> {
+  init(features: PluginFeature): Promise<void> {
     //this.Features = features;
     const self = this;
     return new Promise((resolve) => {
@@ -19,13 +19,26 @@ export class Plugin implements IPlugin {
 
       setInterval(() => {
         self.WebSocketServer.clients.forEach(async client => {
-          client.ping();
+          let pinged = await (new Promise<boolean>((resolve) => {
+            client.ping(undefined, undefined, (err) => {
+              if (err) {
+                return resolve(false);
+              }
+              return resolve(true);
+            });
+          }));
+          if (!pinged) {
+            features.log.info(`${ new Date().getTime() } ${ client.connectionId } TIMED OUT / PING FAILURE`);
+            return client.terminate();
+          }
+          features.emitEvent(null, WSServerEvents.onConnectionCheckin, { client });
           if (Tools.isNullOrUndefined(client.tokenData)) return;
           try {
             let token: any | Boolean = await features.emitEventAndReturn(null, WSServerEvents.auth, {
               connectionId: client.connectionId,
               session: client.session || '{no_session}',
-              token: client.tokenData as string
+              token: client.tokenData as string,
+              sourcePlugin: features.pluginName
             });
             if (typeof token !== 'boolean') {
               return; // auth success
@@ -42,21 +55,35 @@ export class Plugin implements IPlugin {
         });
       }, 30000);
 
+      features.onReturnableEvent(null, WSServerEvents.getConnectedSessions, (resolve, reject, data) => {
+        let listOfConnections = [];
+        for (let client of self.WebSocketServer.clients) {
+          listOfConnections.push(client.connectionId);
+        }
+        resolve(listOfConnections);
+      });
+
       self.WebSocketServer.on('connection', function (ws: IPWebSocket, req) {
         ws.token = false;
         ws.session = null;
         ws.connectionId = hostname() + UUID();
         let clientSession: string | null = null;
-        features.emitEvent(null, WSServerEvents.onConnection, { ws, req });
-        features.log.info(`Client Connected [${req.headers['x-forwarded-for'] || req.socket.remoteAddress}-${clientSession || '{no_session}'}]`);
+        features.emitEvent(null, WSServerEvents.onConnection, {
+          ws, req,
+          sourcePlugin: features.pluginName
+        });
+        features.log.info(`Client Connected [${ req.headers['x-forwarded-for'] || req.socket.remoteAddress }-${ clientSession || '{no_session}' }]`);
         const forceDC = (reason: string) => {
-          features.emitEvent(null, WSServerEvents.onForcedDisconnect, { ws, req });
-          features.log.info(`Client force disconnected [${req.headers['x-forwarded-for'] || req.socket.remoteAddress}-${clientSession || '{no_session}'}] - ${reason}`);
+          features.emitEvent(null, WSServerEvents.onForcedDisconnect, {
+            ws, req,
+            sourcePlugin: features.pluginName
+          });
+          features.log.info(`Client force disconnected [${ req.headers['x-forwarded-for'] || req.socket.remoteAddress }-${ clientSession || '{no_session}' }] - ${ reason }`);
           ws.terminate();
         };
 
         ws.on('message', async (messageStr: string) => {
-          features.log.info(`${new Date().getTime()} ${req.headers['x-forwarded-for'] || req.socket.remoteAddress} ${clientSession || '{no_session}'} > [WS] ${messageStr}`);
+          features.log.info(`${ new Date().getTime() } ${ req.headers['x-forwarded-for'] || req.socket.remoteAddress } ${ clientSession || '{no_session}' } > [WS] ${ messageStr }`);
           if (messageStr === undefined || messageStr === null)
             return forceDC('They`re sending me weird messages');
 
@@ -72,7 +99,7 @@ export class Plugin implements IPlugin {
             };
 
             if (!isValidFields())
-              throw `Messaged received does not match type! :(${lockedFields})!=(${msgFields}): ${messageStr}`;
+              throw `Messaged received does not match type! :(${ lockedFields })!=(${ msgFields }): ${ messageStr }`;
 
             if (message.action === undefined || message.action === null)
               return forceDC('They`re sending me weird messages (no action)');
@@ -92,19 +119,23 @@ export class Plugin implements IPlugin {
               }
               return;
             }
-            features.log.info(`Received action [${req.headers['x-forwarded-for'] || req.socket.remoteAddress}-${req.headers['session']}]: ${message.action}`);
+            features.log.info(`Received action [${ req.headers['x-forwarded-for'] || req.socket.remoteAddress }-${ req.headers['session'] }]: ${ message.action }`);
             let authDataSent = !TOOLS.isNullOrUndefined(message.auth) && typeof message.auth === 'string';
             if (authDataSent || !Tools.isNullOrUndefined(ws.tokenData)) {
               try {
                 let token: any | Boolean = await features.emitEventAndReturn(null, WSServerEvents.auth, {
                   connectionId: ws.connectionId,
                   session: clientSession || '{no_session}',
-                  token: authDataSent ? message.auth : ws.tokenData
+                  token: authDataSent ? message.auth : ws.tokenData,
+                  sourcePlugin: features.pluginName
                 });
                 if (typeof token !== 'boolean') {
                   ws.token = token as IToken;
                   if (message.auth !== ws.tokenData) {
-                    features.emitEvent(null, WSServerEvents.onConnectionAuthChanged, { ws, req });
+                    features.emitEvent(null, WSServerEvents.onConnectionAuthChanged, {
+                      ws, req,
+                      sourcePlugin: features.pluginName
+                    });
                     ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'Authenticated' }));
                     features.log.info(`Auth req: Authed`);
                   }
@@ -118,7 +149,7 @@ export class Plugin implements IPlugin {
               }
             }
             if (message.action == WSClientSpecialActions.log) {
-              features.log.info(`WS Client [${req.headers['x-forwarded-for'] || req.socket.remoteAddress}-${req.headers['session']}]`, message.data);
+              features.log.info(`WS Client [${ req.headers['x-forwarded-for'] || req.socket.remoteAddress }-${ req.headers['session'] }]`, message.data);
               return;
             }
             if (message.action == WSClientSpecialActions.auth) {
@@ -136,7 +167,8 @@ export class Plugin implements IPlugin {
               session: clientSession || new Date().getTime(),
               connectionId: ws.connectionId,
               action: message.action,
-              data: message.data
+              data: message.data,
+              sourcePlugin: features.pluginName
             });
           } catch (Exc) {
             features.log.error(Exc);
@@ -144,8 +176,11 @@ export class Plugin implements IPlugin {
           }
         });
         ws.on('close', (conn) => {
-          features.emitEvent(null, WSServerEvents.onConnectionClose, { ws, req });
-          features.log.info(`Client Disconnected [${req.headers['x-forwarded-for'] || req.socket.remoteAddress}-${req.headers['session']}]`);
+          features.emitEvent(null, WSServerEvents.onConnectionClose, {
+            ws, req,
+            sourcePlugin: features.pluginName
+          });
+          features.log.info(`Client Disconnected [${ req.headers['x-forwarded-for'] || req.socket.remoteAddress }-${ req.headers['session'] }]`);
         });
 
         ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'Hello Flightless Bird' }));
