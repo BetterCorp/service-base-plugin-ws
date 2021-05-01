@@ -189,10 +189,11 @@ export class Plugin implements IPlugin {
       features.onEvent(null, WSServerEvents.send, (data: WSServerData) => {
         if (TOOLS.isNullOrUndefined(data.action)) return features.log.error('received garbage! NO ACTION');
         if (TOOLS.isNullOrUndefined(data.data)) return features.log.error('received garbage! NO DATA');
+        if (TOOLS.isNullOrUndefined(data.connectionId)) return features.log.error('received garbage! NO CONN ID');
         if (typeof data.action !== 'string') return features.log.error('received garbage! NO ACTION AS STRING');
 
         for (let client of self.WebSocketServer.clients) {
-          if (data.connectionId !== data.connectionId)
+          if (client.connectionId !== data.connectionId)
             continue;
           client.send(JSON.stringify({
             action: data.action,
