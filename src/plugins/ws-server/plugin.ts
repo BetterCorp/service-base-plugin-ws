@@ -1,5 +1,5 @@
 import * as WEBSOCKET from 'ws';
-import { CPlugin, CPluginClient, IPlugin } from '@bettercorp/service-base/lib/ILib';
+import { CPlugin, CPluginClient } from '@bettercorp/service-base/lib/ILib';
 import { Tools, Tools as TOOLS } from '@bettercorp/tools/lib/Tools';
 import { IPWebSocket, IPWebSocketServer, IToken, WSClientSpecialActions, WSServerData, WSServerEvents } from '../../lib';
 import { v4 as UUID } from 'uuid';
