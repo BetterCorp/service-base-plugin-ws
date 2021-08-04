@@ -1,5 +1,4 @@
 import * as WEBSOCKET from 'ws';
-import * as http from 'http';
 
 export enum WSServerEvents {
   onConnection = 'on-connection',
@@ -39,7 +38,6 @@ export interface IPWebSocket extends WEBSOCKET {
 
 // @ts-ignore
 export interface IPWebSocketServer extends WEBSOCKET.Server {
-  on (event: 'connection', cb: (this: WEBSOCKET.Server, socket: IPWebSocket, request: http.IncomingMessage) => void): this;
   clients: Set<IPWebSocket>;
 }
 
