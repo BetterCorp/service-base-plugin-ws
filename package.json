@@ -19,12 +19,13 @@
     "typescript": "^3.9.10"
   },
   "dependencies": {
-    "@bettercorp/service-base": "^5.1.20210702035052",
+    "@bettercorp/service-base": "^5.2.20210705134744",
     "@bettercorp/tools": "^1.1.20210611181403",
     "@types/node": "^14.17.7",
     "@types/uuid": "^8.3.1",
     "@types/ws": "^7.4.7",
     "uuid": "^8.3.2",
     "ws": "^7.5.3"
-  }
+  },
+  "bsb_project": true
 }
