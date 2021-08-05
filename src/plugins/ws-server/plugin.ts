@@ -24,20 +24,29 @@ export type PromiseResolve<TData = any, TReturn = void> = (data: TData) => TRetu
 export class wsServer extends CPluginClient<any> {
   public readonly _pluginName: string = "ws-server";
 
+  forceDisconnect(data: WSServerData): void {
+    this.emitEvent(WSServerEvents.forceDisconnect, data);
+  }
+  send(data: WSServerData): any {
+    return this.emitEvent(WSServerEvents.send, data);
+  }
+  async getConnectedSessions(): Promise<Array<any>> {
+    return await this.emitEventAndReturn(WSServerEvents.getConnectedSessions);
+  }
   onConnectionCheckin(listener: (client: any) => void) {
     this.onEvent(WSServerEvents.onConnectionCheckin, listener);
   }
   onConnection(listener: (req: any) => void) {
-    this.onEvent(WSServerEvents.onConnection, (x) => listener(x.ws));
+    this.onEvent(WSServerEvents.onConnection, (x) => listener(x));
   }
   onForcedDisconnect(listener: (req: any) => void) {
-    this.onEvent(WSServerEvents.onForcedDisconnect, (x) => listener(x.ws));
+    this.onEvent(WSServerEvents.onForcedDisconnect, (x) => listener(x));
   }
   onConnectionAuthChanged(listener: (req: any) => void) {
-    this.onEvent(WSServerEvents.onConnectionAuthChanged, (x) => listener(x.ws));
+    this.onEvent(WSServerEvents.onConnectionAuthChanged, (x) => listener(x));
   }
   onConnectionClose(listener: (req: any) => void) {
-    this.onEvent(WSServerEvents.onConnectionClose, (x) => listener(x.ws));
+    this.onEvent(WSServerEvents.onConnectionClose, (x) => listener(x));
   }
   onMessage(listener: (req: IWSServerMessageEvent) => void) {
     this.onEvent(WSServerEvents.receive, listener);
