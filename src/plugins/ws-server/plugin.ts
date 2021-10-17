@@ -24,14 +24,14 @@ export type PromiseResolve<TData = any, TReturn = void> = (data: TData) => TRetu
 export class wsServer extends CPluginClient<any> {
   public readonly _pluginName: string = "ws-server";
 
-  forceDisconnect(data: WSServerData): void {
-    this.emitEvent(WSServerEvents.forceDisconnect, data);
+  forceDisconnect(data: WSServerData, serverId: string): void {
+    this.emitEvent(WSServerEvents.forceDisconnect+serverId, data);
   }
-  send(data: WSServerData): any {
-    return this.emitEvent(WSServerEvents.send, data);
+  send(data: WSServerData, serverId: string): any {
+    return this.emitEvent(WSServerEvents.send+serverId, data);
   }
-  async getConnectedSessions(): Promise<Array<any>> {
-    return await this.emitEventAndReturn(WSServerEvents.getConnectedSessions);
+  async getConnectedSessions(serverId: string): Promise<Array<any>> {
+    return await this.emitEventAndReturn(WSServerEvents.getConnectedSessions+serverId);
   }
   onConnectionCheckin(listener: (client: any) => void) {
     this.onEvent(WSServerEvents.onConnectionCheckin, listener);
@@ -57,12 +57,13 @@ export class wsServer extends CPluginClient<any> {
 }
 export class Plugin extends CPlugin<IWSServerPluginConfig> {
   private WebSocketServer!: IPWebSocketServer;
+  private serverID: string = hostname() + UUID();
 
   init(): Promise<void> {
     const self = this;
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
       self.WebSocketServer = new WEBSOCKET.Server({
-        port: self.getPluginConfig().port
+        port: (await self.getPluginConfig()).port
       }) as any as IPWebSocketServer;
 
       setInterval(() => {
@@ -79,14 +80,15 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
             self.log.info(`${ new Date().getTime() } ${ client.connectionId } TIMED OUT / PING FAILURE`);
             return client.terminate();
           }
-          self.emitEvent(null, WSServerEvents.onConnectionCheckin, client);
+          await self.emitEvent(null, WSServerEvents.onConnectionCheckin, client);
           if (Tools.isNullOrUndefined(client.tokenData)) return;
           try {
             let token: any | Boolean = await self.emitEventAndReturn(null, WSServerEvents.auth, {
               connectionId: client.connectionId,
               session: client.session || '{no_session}',
               token: client.tokenData as string,
-              sourcePlugin: self.pluginName
+              sourcePlugin: self.pluginName,
+              serverId: self.serverID
             });
             if (typeof token !== 'boolean') {
               return; // auth success
@@ -103,7 +105,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         });
       }, 30000);
 
-      self.onReturnableEvent(null, WSServerEvents.getConnectedSessions, (resolve, reject, data) => {
+      await self.onReturnableEvent(null, WSServerEvents.getConnectedSessions+self.serverID, (resolve, reject, data) => {
         let listOfConnections = [];
         for (let client of self.WebSocketServer.clients) {
           listOfConnections.push(client.connectionId);
@@ -111,20 +113,22 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         resolve(listOfConnections);
       });
 
-      self.WebSocketServer.on('connection', function (ws: IPWebSocket, req) {
+      self.WebSocketServer.on('connection', async (ws: IPWebSocket, req) => {
         ws.token = false;
         ws.session = null;
         ws.connectionId = hostname() + UUID();
         let clientSession: string | null = null;
-        self.emitEvent(null, WSServerEvents.onConnection, {
+        await self.emitEvent(null, WSServerEvents.onConnection, {
           ws, req,
-          sourcePlugin: self.pluginName
+          sourcePlugin: self.pluginName,
+          serverId: self.serverID
         });
         self.log.info(`Client Connected [${ req.headers['x-forwarded-for'] || req.socket.remoteAddress }-${ clientSession || '{no_session}' }]`);
-        const forceDC = (reason: string) => {
-          self.emitEvent(null, WSServerEvents.onForcedDisconnect, {
+        const forceDC = async (reason: string) => {
+          await self.emitEvent(null, WSServerEvents.onForcedDisconnect, {
             ws, req,
-            sourcePlugin: self.pluginName
+            sourcePlugin: self.pluginName,
+            serverId: self.serverID
           });
           self.log.info(`Client force disconnected [${ req.headers['x-forwarded-for'] || req.socket.remoteAddress }-${ clientSession || '{no_session}' }] - ${ reason }`);
           ws.terminate();
@@ -133,7 +137,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         ws.on('message', async (messageStr: string) => {
           self.log.info(`${ new Date().getTime() } ${ req.headers['x-forwarded-for'] || req.socket.remoteAddress } ${ clientSession || '{no_session}' } > [WS] ${ messageStr }`);
           if (messageStr === undefined || messageStr === null)
-            return forceDC('They`re sending me weird messages');
+            return await forceDC('They`re sending me weird messages');
 
           let message!: WSServerData;
           try {
@@ -150,15 +154,15 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
               throw `Messaged received does not match type! :(${ lockedFields })!=(${ msgFields }): ${ messageStr }`;
 
             if (message.action === undefined || message.action === null)
-              return forceDC('They`re sending me weird messages (no action)');
+              return await forceDC('They`re sending me weird messages (no action)');
             if (message.data === undefined || message.data === null)
-              return forceDC('They`re sending me weird messages (no data)');
+              return await forceDC('They`re sending me weird messages (no data)');
 
             if (message.action === WSClientSpecialActions.ping) {
               if (message.data.session !== undefined && message.data.session !== null && message.data.session.session !== undefined && message.data.session.session !== null && message.data.session.session !== '') {
                 if (clientSession !== null) {
                   if (message.data.session.session !== clientSession)
-                    return forceDC('Client session changed?!? WHY');
+                    return await forceDC('Client session changed?!? WHY');
                 }
                 if (clientSession === null) {
                   clientSession = message.data.session.session;
@@ -175,14 +179,16 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
                   connectionId: ws.connectionId,
                   session: clientSession || '{no_session}',
                   token: authDataSent ? message.auth : ws.tokenData,
-                  sourcePlugin: self.pluginName
+                  sourcePlugin: self.pluginName,
+                  serverId: self.serverID
                 });
                 if (typeof token !== 'boolean') {
                   ws.token = token as IToken;
                   if (message.auth !== ws.tokenData) {
                     self.emitEvent(null, WSServerEvents.onConnectionAuthChanged, {
                       ws, req,
-                      sourcePlugin: self.pluginName
+                      sourcePlugin: self.pluginName,
+                      serverId: self.serverID
                     });
                     ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'Authenticated' }));
                     self.log.info(`Auth req: Authed`);
@@ -193,7 +199,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
                 ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'UNAuthenticated' }));
                 ws.token = false;
                 self.log.error(exc);
-                return forceDC('- Auth failed');
+                return await forceDC('- Auth failed');
               }
             }
             if (message.action == WSClientSpecialActions.log) {
@@ -204,29 +210,31 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
               return;
             }
 
-            if (self.getPluginConfig().forceAuthenticate === true)
+            if ((await self.getPluginConfig()).forceAuthenticate === true)
               if (Tools.isNullOrUndefined(ws.token) || ws.token == false)
-                if (self.getPluginConfig().notifyClientOnNoAuth === true)
+                if ((await self.getPluginConfig()).notifyClientOnNoAuth === true)
                   return ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'NOAuthenticated' }));
                 else return;
 
-            self.emitEvent(null, WSServerEvents.receive, {
+            await self.emitEvent(null, WSServerEvents.receive, {
               token: ws.token || false,
               session: clientSession || new Date().getTime(),
               connectionId: ws.connectionId,
               action: message.action,
               data: message.data,
-              sourcePlugin: self.pluginName
+              sourcePlugin: self.pluginName,
+              serverId: self.serverID
             });
           } catch (Exc) {
             self.log.error(Exc);
             return forceDC('They`re sending me weird messages (garbage [' + messageStr + '])');
           }
         });
-        ws.on('close', (conn) => {
-          self.emitEvent(null, WSServerEvents.onConnectionClose, {
+        ws.on('close', async (conn) => {
+          await self.emitEvent(null, WSServerEvents.onConnectionClose, {
             ws, req,
-            sourcePlugin: self.pluginName
+            sourcePlugin: self.pluginName,
+            serverId: self.serverID
           });
           self.log.info(`Client Disconnected [${ req.headers['x-forwarded-for'] || req.socket.remoteAddress }-${ req.headers['session'] }]`);
         });
@@ -234,7 +242,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'Hello Flightless Bird' }));
       });
 
-      self.onEvent(null, WSServerEvents.send, (data: WSServerData) => {
+      await self.onEvent(null, WSServerEvents.send+self.serverID, async (data: WSServerData) => {
         if (TOOLS.isNullOrUndefined(data.action)) return self.log.error('received garbage! NO ACTION');
         if (TOOLS.isNullOrUndefined(data.data)) return self.log.error('received garbage! NO DATA');
         if (TOOLS.isNullOrUndefined(data.connectionId)) return self.log.error('received garbage! NO CONN ID');
@@ -251,7 +259,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         }
       });
 
-      self.onEvent(null, WSServerEvents.forceDisconnect, (data: WSServerData) => {
+      await self.onEvent(null, WSServerEvents.forceDisconnect+self.serverID, async (data: WSServerData) => {
         if (TOOLS.isNullOrUndefined(data.action)) return self.log.error('received garbage! NO ACTION');
         if (TOOLS.isNullOrUndefined(data.data)) return self.log.error('received garbage! NO DATA');
         if (typeof data.action !== 'string') return self.log.error('received garbage! NO ACTION AS STRING');

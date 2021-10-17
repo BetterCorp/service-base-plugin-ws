@@ -30,10 +30,10 @@ export class wsClient extends CPluginClient<IWSClientPluginConfig> {
 export class Plugin extends CPlugin<IWSClientPluginConfig> {
   private WebSocket!: WEBSOCKETS;
 
-  private reconnect() {
+  private async reconnect() {
     const self = this;
-    self.log.info(`Connect to[${ self.getPluginConfig().endpoint }]`);
-    self.WebSocket = new WEBSOCKETS(self.getPluginConfig().endpoint, {
+    self.log.info(`Connect to[${ (await self.getPluginConfig()).endpoint }]`);
+    self.WebSocket = new WEBSOCKETS((await self.getPluginConfig()).endpoint, {
       perMessageDeflate: false
     });
     self.WebSocket.on('error', function () {
@@ -49,21 +49,21 @@ export class Plugin extends CPlugin<IWSClientPluginConfig> {
         self.reconnect();
       }, 5000);
     });
-    self.WebSocket.on('open', function open() {
+    self.WebSocket.on('open', async () => {
       self.log.info('Connected');
       self.WebSocket.send(JSON.stringify({
         action: 'ws-auth',
-        auth: self.getPluginConfig().token,
+        auth: (await self.getPluginConfig()).token,
         data: {
-          name: self.getPluginConfig().identity
+          name: (await self.getPluginConfig()).identity
         }
       }));
-      setTimeout(() => {
-        self.emitEvent(null, `status`, true);
+      setTimeout(async () => {
+        await self.emitEvent(null, `status`, true);
       }, 5000);
     });
 
-    self.WebSocket.on('message', (data: string) => {
+    self.WebSocket.on('message', async (data: string) => {
       let msg: WSEvent = JSON.parse(data);
       if (msg.action === 'log') {
         return self.log.info(`[SERVER-${ msg.action }] ${ msg.data }`);
@@ -71,16 +71,16 @@ export class Plugin extends CPlugin<IWSClientPluginConfig> {
       self.log.debug(data);
       if (TOOLS.isNullOrUndefined(msg.action)) return;
       if (TOOLS.isNullOrUndefined(msg.data)) return;
-      self.emitEvent(null, 'message', msg);
+      await self.emitEvent(null, 'message', msg);
     });
   }
 
   init(): Promise<void> {
     const self = this;
-    return new Promise((resolve) => {
-      self.reconnect();
+    return new Promise(async (resolve) => {
+      await self.reconnect();
 
-      self.onEvent<WSEvent>(null, 'send', (data) => {
+      await self.onEvent<WSEvent>(null, 'send', async (data) => {
         if (TOOLS.isNullOrUndefined(data)) return;
         if (TOOLS.isNullOrUndefined(data.action)) return;
         if (typeof data.action !== 'string') return;
@@ -92,7 +92,7 @@ export class Plugin extends CPlugin<IWSClientPluginConfig> {
           self.WebSocket.send(JSON.stringify({
             action: data.action,
             data: data.data,
-            auth: self.getPluginConfig().token || '',
+            auth: (await self.getPluginConfig()).token || '',
           }));
         } catch (exc) {
           self.log.error(exc);
