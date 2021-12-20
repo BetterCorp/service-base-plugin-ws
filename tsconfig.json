@@ -9,7 +9,7 @@
     "rootDir": "src",
     "sourceMap": true,
     "strict": true,
-    "target": "es2015",
+    "target": "es2017",
     "declaration": true
   },
   "linterOptions": {
@@ -23,6 +23,6 @@
   ],
   "exclude": [
     "node_modules/**",
-    "src/plugins/_*"
+    "src/plugins/-*/*.*"
   ]
 }
