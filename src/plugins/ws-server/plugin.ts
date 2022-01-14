@@ -1,5 +1,5 @@
 import * as WEBSOCKET from 'ws';
-import { CPlugin, CPluginClient } from '@bettercorp/service-base/lib/ILib';
+import { CPlugin, CPluginClient } from '@bettercorp/service-base/lib/interfaces/plugins';
 import { Tools, Tools as TOOLS } from '@bettercorp/tools/lib/Tools';
 import { IPWebSocket, IPWebSocketServer, IToken, WSClientSpecialActions, WSServerData, WSServerEvents } from '../../lib';
 import { v4 as UUID } from 'uuid';
@@ -105,13 +105,13 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         });
       }, 30000);
 
-      await self.onReturnableEvent(null, WSServerEvents.getConnectedSessions+self.serverID, (resolve, reject, data) => {
+      await self.onReturnableEvent(null, WSServerEvents.getConnectedSessions+self.serverID, () => new Promise((resolve) => {
         let listOfConnections = [];
         for (let client of self.WebSocketServer.clients) {
           listOfConnections.push(client.connectionId);
         }
         resolve(listOfConnections);
-      });
+      }));
 
       self.WebSocketServer.on('connection', async (ws: IPWebSocket, req) => {
         ws.token = false;

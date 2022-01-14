@@ -1,5 +1,5 @@
 import * as WEBSOCKETS from 'ws';
-import { CPlugin, CPluginClient } from '@bettercorp/service-base/lib/ILib';
+import { CPlugin, CPluginClient } from '@bettercorp/service-base/lib/interfaces/plugins';
 import { Tools as TOOLS } from '@bettercorp/tools/lib/Tools';
 import { WSEvent } from './WSEvent';
 import { IWSClientPluginConfig } from './sec.config';
