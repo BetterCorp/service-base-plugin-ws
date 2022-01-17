@@ -110,7 +110,13 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
             self.log.info(`${ new Date().getTime() } ${ client.connectionId } TIMED OUT / PING FAILURE`);
             return client.terminate();
           }
-          await self.emitEvent(null, WSServerEvents.onConnectionCheckin, client);
+          await self.emitEvent(null, WSServerEvents.onConnectionCheckin, {
+            connectionId: client.connectionId,
+            session: client.session || '{no_session}',
+            token: client.tokenData as string,
+            sourcePlugin: self.pluginName,
+            serverId: self.serverID,
+          });
           if (Tools.isNullOrUndefined(client.tokenData)) return;
           try {
             let token: any | Boolean = await self.emitEventAndReturn<IWSServerAuthRequest>(null, WSServerEvents.auth, {
