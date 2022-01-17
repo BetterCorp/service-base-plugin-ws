@@ -75,6 +75,20 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
       req.socket.remoteAddress || 'private').toString();
   }
 
+  private getSafeData(ws: any, req: any) {
+    return {
+      ws: {
+        connectionId: ws.connectionId,
+        token: ws.token,
+        session: ws.session,
+        tokenData: ws.tokenData,
+      },
+      req: {
+        headers: req.headers
+      }
+    };
+  }
+
   init(): Promise<void> {
     const self = this;
     return new Promise(async (resolve) => {
@@ -135,7 +149,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         ws.connectionId = hostname() + UUID();
         let clientSession: string | null = null;
         await self.emitEvent(null, WSServerEvents.onConnection, {
-          ws, req,
+          ...self.getSafeData(ws, req),
           sourcePlugin: self.pluginName,
           serverId: self.serverID,
           clientIP: self.getIPFromHeaders(req)
@@ -143,7 +157,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         self.log.info(`Client Connected [${ self.getIPFromHeaders(req) }-${ clientSession || '{no_session}' }]`);
         const forceDC = async (reason: string) => {
           await self.emitEvent(null, WSServerEvents.onForcedDisconnect, {
-            ws, req,
+            ...self.getSafeData(ws, req),
             sourcePlugin: self.pluginName,
             serverId: self.serverID,
             clientIP: self.getIPFromHeaders(req)
@@ -205,7 +219,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
                   ws.token = token as IToken;
                   if (message.auth !== ws.tokenData) {
                     self.emitEvent(null, WSServerEvents.onConnectionAuthChanged, {
-                      ws, req,
+                      ...self.getSafeData(ws, req),
                       sourcePlugin: self.pluginName,
                       serverId: self.serverID,
                       clientIP: self.getIPFromHeaders(req)
@@ -253,7 +267,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
         });
         ws.on('close', async (conn) => {
           await self.emitEvent(null, WSServerEvents.onConnectionClose, {
-            ws, req,
+            ...self.getSafeData(ws, req),
             sourcePlugin: self.pluginName,
             serverId: self.serverID,
             clientIP: self.getIPFromHeaders(req)
