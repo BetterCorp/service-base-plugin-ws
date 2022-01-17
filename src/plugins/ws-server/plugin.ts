@@ -21,40 +21,42 @@ export interface IWSServerAuthRequest {
   session: string;
   token: string | boolean;
   sourcePlugin: string;
+  serverId: string
+  clientIP?: string
 }
-export type PromiseResolve<TData = any, TReturn = void> = (data: TData) => TReturn;
+
 export class wsServer extends CPluginClient<any> {
   public readonly _pluginName: string = "ws-server";
 
-  forceDisconnect(data: WSServerData, serverId: string): void {
-    this.emitEvent(WSServerEvents.forceDisconnect + serverId, data);
+  forceDisconnect(data: WSServerData, serverId: string): Promise<void> {
+    return this.emitEvent(WSServerEvents.forceDisconnect + serverId, data);
   }
-  send(data: WSServerData, serverId: string): any {
+  send(data: WSServerData, serverId: string): Promise<void> {
     return this.emitEvent(WSServerEvents.send + serverId, data);
   }
   async getConnectedSessions(serverId: string): Promise<Array<any>> {
     return await this.emitEventAndReturn(WSServerEvents.getConnectedSessions + serverId);
   }
   onConnectionCheckin(listener: (client: any) => void) {
-    this.onEvent(WSServerEvents.onConnectionCheckin, listener);
+    return this.onEvent(WSServerEvents.onConnectionCheckin, listener);
   }
   onConnection(listener: (req: any) => void) {
-    this.onEvent(WSServerEvents.onConnection, (x) => listener(x));
+    return this.onEvent(WSServerEvents.onConnection, listener);
   }
   onForcedDisconnect(listener: (req: any) => void) {
-    this.onEvent(WSServerEvents.onForcedDisconnect, (x) => listener(x));
+    return this.onEvent(WSServerEvents.onForcedDisconnect, listener);
   }
   onConnectionAuthChanged(listener: (req: any) => void) {
-    this.onEvent(WSServerEvents.onConnectionAuthChanged, (x) => listener(x));
+    return this.onEvent(WSServerEvents.onConnectionAuthChanged, listener);
   }
   onConnectionClose(listener: (req: any) => void) {
-    this.onEvent(WSServerEvents.onConnectionClose, (x) => listener(x));
+    return this.onEvent(WSServerEvents.onConnectionClose, listener);
   }
   onMessage(listener: (req: IWSServerMessageEvent) => void) {
-    this.onEvent(WSServerEvents.receive, listener);
+    return this.onEvent(WSServerEvents.receive, listener);
   }
-  onAuth(listener: (resolve: PromiseResolve<any, void>, reject: PromiseResolve<any, void>, request: IWSServerAuthRequest) => void) {
-    this.onReturnableEvent(WSServerEvents.auth, listener as any);
+  onAuth(listener: (data?: IWSServerAuthRequest) => Promise<any>) {
+    return this.onReturnableEvent(WSServerEvents.auth, listener);
   }
 }
 export class Plugin extends CPlugin<IWSServerPluginConfig> {
@@ -97,12 +99,12 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
           await self.emitEvent(null, WSServerEvents.onConnectionCheckin, client);
           if (Tools.isNullOrUndefined(client.tokenData)) return;
           try {
-            let token: any | Boolean = await self.emitEventAndReturn(null, WSServerEvents.auth, {
+            let token: any | Boolean = await self.emitEventAndReturn<IWSServerAuthRequest>(null, WSServerEvents.auth, {
               connectionId: client.connectionId,
               session: client.session || '{no_session}',
               token: client.tokenData as string,
               sourcePlugin: self.pluginName,
-              serverId: self.serverID
+              serverId: self.serverID,
             });
             if (typeof token !== 'boolean') {
               return; // auth success
@@ -191,7 +193,7 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
             let authDataSent = !TOOLS.isNullOrUndefined(message.auth) && typeof message.auth === 'string';
             if (authDataSent || !Tools.isNullOrUndefined(ws.tokenData)) {
               try {
-                let token: any | Boolean = await self.emitEventAndReturn(null, WSServerEvents.auth, {
+                let token: any | Boolean = await self.emitEventAndReturn<IWSServerAuthRequest>(null, WSServerEvents.auth, {
                   connectionId: ws.connectionId,
                   session: clientSession || '{no_session}',
                   token: authDataSent ? message.auth : ws.tokenData,
