@@ -21,8 +21,8 @@ export interface IWSServerAuthRequest {
   session: string;
   token: string | boolean;
   sourcePlugin: string;
-  serverId: string
-  clientIP?: string
+  serverId: string;
+  clientIP?: string;
 }
 
 export class wsServer extends CPluginClient<any> {
@@ -234,12 +234,15 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
                     self.log.info(`Auth req: Authed`);
                   }
                   ws.tokenData = message.auth;
+                  return;
                 }
+                ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'AuthNe' }));
+                ws.token = false;
               } catch (exc) {
                 ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'UNAuthenticated' }));
                 ws.token = false;
-                self.log.error(exc);
-                return await forceDC('- Auth failed');
+                self.log.error('Auth exception', exc);
+                //return await forceDC('- Auth failed');
               }
             }
             if (message.action == WSClientSpecialActions.log) {
@@ -250,11 +253,13 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
               return;
             }
 
-            if ((await self.getPluginConfig()).forceAuthenticate === true)
-              if (Tools.isNullOrUndefined(ws.token) || ws.token == false)
+            if ((await self.getPluginConfig()).forceAuthenticate === true) {
+              if (Tools.isNullOrUndefined(ws.token) || ws.token == false) {
                 if ((await self.getPluginConfig()).notifyClientOnNoAuth === true)
                   return ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'NOAuthenticated' }));
                 else return;
+              }
+            }
 
             await self.emitEvent(null, WSServerEvents.receive, {
               token: ws.token || false,
