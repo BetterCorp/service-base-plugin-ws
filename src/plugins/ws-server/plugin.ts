@@ -234,14 +234,15 @@ export class Plugin extends CPlugin<IWSServerPluginConfig> {
                     self.log.info(`Auth req: Authed`);
                   }
                   ws.tokenData = message.auth;
-                  return;
+                } else {
+                  ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'AuthNe' }));
+                  ws.token = false;
                 }
-                ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'AuthNe' }));
-                ws.token = false;
               } catch (exc) {
                 ws.send(JSON.stringify({ action: WSClientSpecialActions.log, data: 'UNAuthenticated' }));
                 ws.token = false;
                 self.log.error('Auth exception', exc);
+                return;
                 //return await forceDC('- Auth failed');
               }
             }
