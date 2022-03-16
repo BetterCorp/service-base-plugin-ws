@@ -37,22 +37,22 @@ export class wsServer extends CPluginClient<any> {
   async getConnectedSessions(serverId: string): Promise<Array<any>> {
     return await this.emitEventAndReturn(WSServerEvents.getConnectedSessions + serverId);
   }
-  onConnectionCheckin(listener: (client: any) => void) {
+  onConnectionCheckin(listener: {(client: any): Promise<void>}) {
     return this.onEvent(WSServerEvents.onConnectionCheckin, listener);
   }
-  onConnection(listener: (req: any) => void) {
+  onConnection(listener: {(req: any): Promise<void>}) {
     return this.onEvent(WSServerEvents.onConnection, listener);
   }
-  onForcedDisconnect(listener: (req: any) => void) {
+  onForcedDisconnect(listener: {(req: any): Promise<void>}) {
     return this.onEvent(WSServerEvents.onForcedDisconnect, listener);
   }
-  onConnectionAuthChanged(listener: (req: any) => void) {
+  onConnectionAuthChanged(listener: {(req: any): Promise<void>}) {
     return this.onEvent(WSServerEvents.onConnectionAuthChanged, listener);
   }
-  onConnectionClose(listener: (req: any) => void) {
+  onConnectionClose(listener: {(req: any): Promise<void>}) {
     return this.onEvent(WSServerEvents.onConnectionClose, listener);
   }
-  onMessage(listener: (req: IWSServerMessageEvent) => void) {
+  onMessage(listener: {(req: IWSServerMessageEvent): Promise<void>}) {
     return this.onEvent(WSServerEvents.receive, listener);
   }
   onAuth(listener: (data?: IWSServerAuthRequest) => Promise<any>) {

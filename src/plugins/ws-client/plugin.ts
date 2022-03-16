@@ -19,11 +19,11 @@ export class wsClient extends CPluginClient<IWSClientPluginConfig> {
     });
   }
 
-  onMessage(listener: (msg: IWSclientMessage) => void) {
+  onMessage(listener: { (msg: IWSclientMessage): Promise<void>; }) {
     this.onEvent('message', listener);
   }
 
-  onStatusChange(listener: (status: boolean) => void) {
+  onStatusChange(listener: { (status: boolean): Promise<void>; }) {
     this.onEvent('status', listener);
   }
 }
