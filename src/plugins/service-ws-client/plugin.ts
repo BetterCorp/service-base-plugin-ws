@@ -1,4 +1,4 @@
-import * as WEBSOCKETS from "ws";
+import { WebSocket as WebSockets } from "ws";
 import { Tools } from "@bettercorp/tools/lib/Tools";
 import { IWSClientPluginConfig } from "./sec.config";
 import {
@@ -16,7 +16,7 @@ export class Service extends ServicesBase<
   ServiceCallable,
   IWSClientPluginConfig
 > {
-  private WebSocket!: WEBSOCKETS;
+  private WebSocket!: WebSockets;
   private reconnectNum: number = 0;
   constructor(
     pluginName: string,
@@ -36,7 +36,7 @@ export class Service extends ServicesBase<
       if (Tools.isNullOrUndefined(action)) return;
       if (typeof action !== "string") return;
 
-      if (WebSocket === undefined || WebSocket === null) {
+      if (Tools.isNullOrUndefined(self.WebSocket)) {
         throw "WS NOT CONNECTED YET";
       }
       try {
@@ -67,7 +67,7 @@ export class Service extends ServicesBase<
         }
       );
     }
-    self.WebSocket = new WEBSOCKETS(config.endpoint, {
+    self.WebSocket = new WebSockets(config.endpoint, {
       perMessageDeflate: false,
     });
     self.WebSocket.on("error", async (e) => {
