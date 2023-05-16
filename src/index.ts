@@ -126,9 +126,10 @@ export enum WSServer_Mode {
   "generic" = "generic",
 }
 
-export interface IWSclientMessage {
+export interface WSEvent<T = any> {
   action: string;
-  data: any;
+  data: T;
+  auth?: string;
 }
 
 export interface WSClientEmitAREvents extends ServiceCallable {

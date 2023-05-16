@@ -1,13 +1,12 @@
 import * as WEBSOCKETS from "ws";
 import { Tools } from "@bettercorp/tools/lib/Tools";
-import { WSEvent } from "./WSEvent";
 import { IWSClientPluginConfig } from "./sec.config";
 import {
   ServicesBase,
   ServiceCallable,
   IPluginLogger,
 } from "@bettercorp/service-base";
-import { WSClientOnEvents, WSClientEmitAREvents } from "../../";
+import { WSClientOnEvents, WSClientEmitAREvents, WSEvent } from "../../";
 
 export class Service extends ServicesBase<
   ServiceCallable,

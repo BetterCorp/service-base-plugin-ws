@@ -1,10 +1,11 @@
 import * as WEBSOCKET from "ws";
-import { Tools, Tools as TOOLS } from "@bettercorp/tools/lib/Tools";
+import { Tools } from "@bettercorp/tools/lib/Tools";
 import {
   IPWebSocket,
   IPWebSocketServer,
   IToken,
   WSClientSpecialActions,
+  WSEvent,
   WSServerOnEmitReturnableEvents,
   WSServerOnEvents,
   WSServerOnReturnableEvents,
@@ -260,11 +261,7 @@ export class Service extends ServicesBase<
           if (messageStr === undefined || messageStr === null)
             return await forceDC("They`re sending me weird messages");
 
-          let message!: {
-            action: string;
-            data: any;
-            auth: string;
-          };
+          let message!: WSEvent;
           try {
             message = JSON.parse(messageStr);
             const lockedFields = ["action", "data", "auth"];
@@ -314,9 +311,7 @@ export class Service extends ServicesBase<
                 action: message.action,
               }
             );
-            let authDataSent =
-              !TOOLS.isNullOrUndefined(message.auth) &&
-              typeof message.auth === "string";
+            let authDataSent = Tools.isString(message.auth);
             if (authDataSent || !Tools.isNullOrUndefined(ws.tokenData)) {
               try {
                 let token: any | Boolean =
@@ -373,7 +368,7 @@ export class Service extends ServicesBase<
                       userId: ws.token.sub,
                     });
                   }
-                  ws.tokenData = message.auth;
+                  ws.tokenData = message.auth as string;
                 } else {
                   ws.send(
                     JSON.stringify({
@@ -529,11 +524,11 @@ export class Service extends ServicesBase<
           action: WSClientSpecialActions | string,
           data: any
         ): Promise<void> => {
-          if (TOOLS.isNullOrUndefined(action))
+          if (Tools.isNullOrUndefined(action))
             return self.log.error("received garbage! NO ACTION");
-          if (TOOLS.isNullOrUndefined(data))
+          if (Tools.isNullOrUndefined(data))
             return self.log.error("received garbage! NO DATA");
-          if (TOOLS.isNullOrUndefined(connectionId))
+          if (Tools.isNullOrUndefined(connectionId))
             return self.log.error("received garbage! NO CONN ID");
           if (typeof action !== "string")
             return self.log.error("received garbage! NO ACTION AS STRING");
@@ -559,11 +554,11 @@ export class Service extends ServicesBase<
           action: WSClientSpecialActions | string,
           data: any
         ): Promise<void> => {
-          if (TOOLS.isNullOrUndefined(action))
+          if (Tools.isNullOrUndefined(action))
             return self.log.error("received garbage! NO ACTION");
-          if (TOOLS.isNullOrUndefined(data))
+          if (Tools.isNullOrUndefined(data))
             return self.log.error("received garbage! NO DATA");
-          if (TOOLS.isNullOrUndefined(connectionId))
+          if (Tools.isNullOrUndefined(connectionId))
             return self.log.error("received garbage! NO CONN ID");
           if (typeof action !== "string")
             return self.log.error("received garbage! NO ACTION AS STRING");
@@ -585,12 +580,12 @@ export class Service extends ServicesBase<
       await self.onReturnableEvent(
         "forceDisconnect",
         async (connectionIds: Array<string> | string, reason: string) => {
-          if (TOOLS.isNullOrUndefined(connectionIds))
+          if (Tools.isNullOrUndefined(connectionIds))
             return self.log.error("received garbage! NO CONNECTION ID");
-          if (TOOLS.isNullOrUndefined(reason))
+          if (Tools.isNullOrUndefined(reason))
             return self.log.error("received garbage! NO REASON");
 
-          let connectionId = TOOLS.isArray(connectionIds)
+          let connectionId = Tools.isArray(connectionIds)
             ? connectionIds
             : [connectionIds];
 
@@ -612,12 +607,12 @@ export class Service extends ServicesBase<
         self.serverID,
         "forceDisconnect",
         async (connectionIds: Array<string> | string, reason: string) => {
-          if (TOOLS.isNullOrUndefined(connectionIds))
+          if (Tools.isNullOrUndefined(connectionIds))
             return self.log.error("received garbage! NO CONNECTION ID");
-          if (TOOLS.isNullOrUndefined(reason))
+          if (Tools.isNullOrUndefined(reason))
             return self.log.error("received garbage! NO REASON");
 
-          let connectionId = TOOLS.isArray(connectionIds)
+          let connectionId = Tools.isArray(connectionIds)
             ? connectionIds
             : [connectionIds];
 
