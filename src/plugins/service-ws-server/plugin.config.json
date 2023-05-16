@@ -1,0 +1,6 @@
+{
+  "key": "service-ws-server",
+  "name": "Websocket Server",
+  "icon": "ws.png",
+  "description": "Websocket server base, with auth and actions"
+}

@@ -1,0 +1,6 @@
+{
+  "key": "service-ws-client",
+  "name": "Websocket Client",
+  "icon": "ws.png",
+  "description": "Websocket client service for single server"
+}
