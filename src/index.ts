@@ -81,6 +81,18 @@ export interface WSServerOnEmitReturnableEvents extends ServiceCallable {
   ): Promise<false | IToken>;
 }
 
+export interface WSServerTiedCallableMethods extends ServiceCallable {
+  getServerId(): Promise<string>;
+}
+
+export interface WSClientEmitAREvents extends ServiceCallable {
+  send(action: string, data: any): Promise<void>;
+}
+export interface WSClientOnEvents extends ServiceCallable {
+  receive(action: string, data: any): Promise<void>;
+  status(status: boolean): Promise<void>;
+}
+
 export interface IToken {
   sub: string;
 }
@@ -120,22 +132,27 @@ export interface IWSServerAuthRequest {
   clientIP?: string;
 }
 
-export enum WSServer_Mode {
-  "single" = "single",
-  "multi" = "multi",
-  "generic" = "generic",
-}
-
 export interface WSEvent<T = any> {
   action: string;
   data: T;
   auth?: string;
 }
 
-export interface WSClientEmitAREvents extends ServiceCallable {
-  send(action: string, data: any): Promise<void>;
+// plugin
+export enum WSServer_Mode {
+  "single" = "single",
+  "multi" = "multi",
+  "generic" = "generic",
 }
-export interface WSClientOnEvents extends ServiceCallable {
-  receive(action: string, data: any): Promise<void>;
-  status(status: boolean): Promise<void>;
+
+// client
+export enum WSServerMode {
+  /** You know the server ID, or it is usually static */
+  "single" = "single",
+  /** There are multiple servers running like a cluster */
+  "multi" = "multi",
+  /** The server is running alongside your plugin and you tie directly into it */
+  "tied" = "tied",
+  /** The server doesn't use serverIDs and is generically referenceable */
+  "generic" = "generic",
 }

@@ -9,6 +9,7 @@ import {
   WSServerOnEmitReturnableEvents,
   WSServerOnEvents,
   WSServerOnReturnableEvents,
+  WSServerTiedCallableMethods,
 } from "../..";
 import { v4 as UUID } from "uuid";
 import { hostname } from "os";
@@ -26,7 +27,7 @@ export class Service extends ServicesBase<
   WSServerOnEvents,
   WSServerOnReturnableEvents,
   WSServerOnEmitReturnableEvents,
-  ServiceCallable,
+  WSServerTiedCallableMethods,
   IWSServerPluginConfig
 > {
   private WebSocketServer!: IPWebSocketServer;
@@ -39,6 +40,10 @@ export class Service extends ServicesBase<
   ) {
     super(pluginName, cwd, pluginCwd, log);
     this.serverID = hostname() + UUID();
+  }
+
+  public async getServerId(): Promise<string> {
+    return this.serverID;
   }
 
   private getSafeData(ws: IPWebSocket, req: IncomingMessage) {

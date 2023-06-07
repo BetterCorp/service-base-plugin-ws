@@ -9,36 +9,56 @@ import {
   WSServerOnEmitReturnableEvents,
   IToken,
   WSClientSpecialActions,
-  WSServer_Mode,
+  WSServerMode,
+  WSServerTiedCallableMethods,
 } from "../../";
 import { IncomingHttpHeaders } from "http";
 
-export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
+export class wsServer<
+  ServerMode extends WSServerMode,
+  T extends ServerMode
+> extends ServicesClient<
   ServiceCallable,
   WSServerOnEvents,
   WSServerOnReturnableEvents,
   WSServerOnEmitReturnableEvents,
-  ServiceCallable
+  WSServerTiedCallableMethods
 > {
   private _serverMode: ServerMode;
   private _serverId: string = "default";
+  private _getServerIdFromTiedInstance: boolean = false;
+  public override initAfterPlugins: Array<string> = [];
   public readonly _pluginName: string = "service-ws-server";
   public constructor(
     self: ServicesBase<any, any, any>,
-    serverMode: ServerMode,
-    serverId?: string
+    serverMode: T,
+    serverId?: T extends "tied-single" ? never : string
   ) {
     super(self);
-    this._serverMode = serverMode;
-    if (typeof serverId === "string") this._serverId = serverId;
+    if (serverMode === WSServerMode.tied) {
+      this.initAfterPlugins.push("service-ws-server");
+      this._serverMode = WSServerMode.single as ServerMode;
+      this._getServerIdFromTiedInstance = true;
+    } else {
+      this._serverMode = serverMode as ServerMode;
+      if (typeof serverId === "string") this._serverId = serverId;
+    }
+  }
+  public override async _register(): Promise<void> {
+    await this._register();
+    if (this._getServerIdFromTiedInstance)
+      this._serverId = await this._plugin.callPluginMethod("getServerId");
   }
 
   public get serverId() {
     return this._serverId;
   }
   public set serverId(serverId: string) {
-    if (this._serverMode === WSServer_Mode.generic)
-      throw new Error("Cannot set serverId in generic mode");
+    if (
+      this._serverMode === WSServerMode.generic ||
+      this._serverMode === WSServerMode.tied
+    )
+      throw new Error("Cannot set serverId in " + this._serverMode + " mode");
     this._serverId = serverId;
   }
 
@@ -53,7 +73,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     ) => Promise<void>,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode === WSServer_Mode.single)
+    if (this._serverMode === WSServerMode.single)
       return await this._plugin.onEventSpecific(
         serverId ?? this._serverId,
         "onConnection",
@@ -72,7 +92,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     ) => Promise<void>,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode === WSServer_Mode.single)
+    if (this._serverMode === WSServerMode.single)
       return await this._plugin.onEventSpecific(
         serverId ?? this._serverId,
         "onConnectionClose",
@@ -91,7 +111,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     ) => Promise<void>,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode === WSServer_Mode.single)
+    if (this._serverMode === WSServerMode.single)
       return await this._plugin.onEventSpecific(
         serverId ?? this._serverId,
         "onConnectionAuthChanged",
@@ -110,7 +130,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     ) => Promise<void>,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode === WSServer_Mode.single)
+    if (this._serverMode === WSServerMode.single)
       return await this._plugin.onEventSpecific(
         serverId ?? this._serverId,
         "onForcedDisconnect",
@@ -127,7 +147,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     ) => Promise<void>,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode === WSServer_Mode.single)
+    if (this._serverMode === WSServerMode.single)
       return await this._plugin.onEventSpecific(
         serverId ?? this._serverId,
         "onConnectionCheckin",
@@ -147,7 +167,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     ) => Promise<void>,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode === WSServer_Mode.single)
+    if (this._serverMode === WSServerMode.single)
       return await this._plugin.onEventSpecific(
         serverId ?? this._serverId,
         "onReceive",
@@ -166,7 +186,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     ) => Promise<void>,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode === WSServer_Mode.single)
+    if (this._serverMode === WSServerMode.single)
       return await this._plugin.onEventSpecific(
         serverId ?? this._serverId,
         "onLog",
@@ -176,7 +196,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
   }
 
   public async getConnectedSessions(serverId?: string): Promise<Array<string>> {
-    if (this._serverMode !== WSServer_Mode.generic)
+    if (this._serverMode !== WSServerMode.generic)
       return await this._plugin.emitEventAndReturnSpecific(
         serverId ?? this._serverId,
         "getConnectedSessions"
@@ -189,7 +209,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     data: any,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode !== WSServer_Mode.generic)
+    if (this._serverMode !== WSServerMode.generic)
       return await this._plugin.emitEventAndReturnSpecific(
         serverId ?? this._serverId,
         "send",
@@ -209,7 +229,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
     reason: string,
     serverId?: string
   ): Promise<void> {
-    if (this._serverMode !== WSServer_Mode.generic)
+    if (this._serverMode !== WSServerMode.generic)
       return await this._plugin.emitEventAndReturnSpecific(
         serverId ?? this._serverId,
         "forceDisconnect",
@@ -231,7 +251,7 @@ export class wsServer<ServerMode extends WSServer_Mode> extends ServicesClient<
       clientIP: string | null
     ) => Promise<false | IToken>
   ): Promise<void> {
-    if (this._serverMode === WSServer_Mode.single)
+    if (this._serverMode === WSServerMode.single)
       return await this._plugin.onReturnableEventSpecific(
         this._serverId,
         "onAuth",
